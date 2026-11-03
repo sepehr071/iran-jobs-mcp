@@ -2,6 +2,8 @@
 
 <div align="center">
 
+<img src="https://raw.githubusercontent.com/sepehr071/iran-jobs-mcp/main/.github/banner.png" alt="iran-jobs-mcp: unofficial Iran jobs (استخدام) MCP server that searches IranTalent, Jobinja and Jobvision job ads, companies and pay for Claude, Cursor and Copilot" width="100%">
+
 # iran-jobs-mcp: Iran jobs (استخدام) MCP server for AI agents, IranTalent + Jobinja + Jobvision
 
 **iran-jobs-mcp is an unofficial, read-only MCP server that lets an AI agent search Iranian job ads, companies and pay on three job sites at once: IranTalent (ایران‌تلنت, irantalent.com), Jobinja (جابینجا, jobinja.ir) and Jobvision (جاب‌ویژن, jobvision.ir).**<br>
