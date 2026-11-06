@@ -97,22 +97,17 @@ async def _report(meta: dict) -> dict:
 async def job_irantalent_salary_reports(
     search: Annotated[
         str | None,
-        Field(
-            description="Part of the report slug, its Persian name or the specialty name, e.g. java, react, حسابداری."
-        ),
+        Field(description="Slug part, Persian name or specialty, e.g. java, حسابداری."),
     ] = None,
     seniority: Annotated[
         str | None,
-        Field(
-            description="Seniority slug from job_irantalent_lookups(kind='salary_seniority'), e.g. junior, mid-level, senior, manager."
-        ),
+        Field(description="Slug from job_irantalent_lookups('salary_seniority'), e.g. junior, senior."),
     ] = None,
     page: Annotated[int, Field(description="Page number, 1-based. 30 reports per page.", ge=1, le=20)] = 1,
 ) -> dict:
     """List IranTalent salary reports (salary.irantalent.com): one per job specialty and seniority level.
 
-    Use first for "how much does a X earn in Iran". About 200 reports, each with a title like "salary of senior Java
-    developer in 1405". Next: job_irantalent_salary with the report slug (or a whole specialty) for the figures.
+    Use first for "how much does a X earn in Iran". Next: job_irantalent_salary with a report slug.
     """
     rows = await _reports()
     q = (search or "").strip().lower()
@@ -132,19 +127,18 @@ async def job_irantalent_salary_reports(
 
 @tool("Salary figures")
 async def job_irantalent_salary(
-    report: Annotated[str | None, Field(description="One report slug from job_irantalent_salary_reports.")] = None,
+    report: Annotated[str | None, Field(description="Report slug from job_irantalent_salary_reports.")] = None,
     specialty: Annotated[
         str | None,
         Field(
-            description="A specialty slug from job_irantalent_lookups(kind='salary_specialties'), e.g. java: returns every seniority level."
+            description="Specialty slug from job_irantalent_lookups('salary_specialties'), e.g. java: all seniority levels."
         ),
     ] = None,
 ) -> dict:
     """Read the salary figures of one IranTalent salary report, or of every seniority level of one specialty.
 
-    Give exactly one of report or specialty. Figures are national net monthly salaries in Toman at the 10th, 25th,
-    50th (median), 75th and 90th percentile, for Persian year 1405 (requested salaries) and 1404 (received), from
-    IranTalent's salary survey, not from job ads. No per-city split. Next: job_irantalent_search_jobs to see live ads for the role.
+    Give exactly one of report or specialty. Net monthly Toman at p10/p25/p50/p75/p90, for 1405 (requested) and 1404
+    (received), from IranTalent's survey, not ads. National only.
     """
     if bool(report) == bool(specialty):
         raise ApiError("Give exactly one of report or specialty.")

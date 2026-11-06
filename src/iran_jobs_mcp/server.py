@@ -16,30 +16,14 @@ from .jobvision import jobs as jv_jobs  # noqa: F401
 from .registry import TOOLS
 
 INSTRUCTIONS = """\
-Unofficial, read-only access to three Iranian job sites: IranTalent (ایران\u200cتلنت, irantalent.com), Jobinja
-(جابینجا, jobinja.ir) and Jobvision (جاب\u200cویژن, jobvision.ir): the public job ads, company pages, reviews and pay
-data they show anyone without an account. Nothing here can log in, apply, post, save or review anything.
+Unofficial, read-only access to three Iranian job sites: IranTalent (ایران\u200cتلنت), Jobinja (جابینجا) and Jobvision
+(جاب\u200cویژن): public job ads, company pages, reviews and pay data. Nothing here can log in, apply or post.
 
-Merged tools take site='all' (default), 'irantalent', 'jobinja' or 'jobvision' and answer with one block per site; if
-one site fails its block holds an `error` and the others still answer: job_search (keyword, remote), job_companies
-(find a company by name; each site's id), job_top_companies (best-rated employers), job_market (open ads per category),
-job_salary (pay for a role: IranTalent survey + Jobinja and Jobvision ads).
-IranTalent only: job_irantalent_search_jobs (filters by slug: city, category, seniority, industry, employment, work
-type, company, fast hiring), job_irantalent_job, job_irantalent_similar_jobs, job_irantalent_company (profile, rating
-breakdown), job_irantalent_company_reviews (anonymous employee reviews), job_irantalent_lookups (filter slugs),
-job_irantalent_job_market, job_irantalent_salary_reports and job_irantalent_salary (salary survey percentiles).
-Jobinja only: job_jobinja_search_jobs (province, city, category, remote, contract, internship, experience, minimum
-salary, benefits, sort), job_jobinja_job (salary, skills, full text), job_jobinja_company, job_jobinja_company_jobs
-(open or expired ads), job_jobinja_search_companies (by name or industry), job_jobinja_filters (exact names),
-job_jobinja_market (counts per category, province, city, industry, skill), job_jobinja_skills (skill demand),
-job_jobinja_salary_stats.
-Jobvision only: job_jobvision_search (city, category, work type, seniority, experience, pay, remote, internship,
-military service, government sector, posted within, sort), job_jobvision_job, job_jobvision_similar_jobs,
-job_jobvision_company (profile and open ads), job_jobvision_companies (directory by name, province, industry, size,
-rating), job_jobvision_interviews (interview reports and questions), job_jobvision_pay_stats, job_jobvision_careers and
-job_jobvision_career (career guide with survey salaries), job_jobvision_suggest (title autocomplete),
-job_jobvision_locations, job_jobvision_options (filter lists), job_jobvision_market, job_jobvision_government_news
-(public-sector hiring announcements).
+Merged tools take site='all' (default), 'irantalent', 'jobinja' or 'jobvision' and answer with one block per site; a
+failing site's block holds `error`: job_search, job_companies (each site's company id), job_top_companies, job_market,
+job_salary. Site tools are prefixed job_irantalent_, job_jobinja_ and job_jobvision_: search, job detail, company,
+reviews or interviews, lookups/filters for exact names, market counts, pay stats; Jobvision also has a career guide
+and government hiring news.
 
 Typical flows: "python jobs" -> job_search("python") -> the site's job tool with an id from that site's block. "python
 jobs in Isfahan" -> job_jobinja_search_jobs(keyword="python", province="اصفهان") and job_jobvision_search("python",

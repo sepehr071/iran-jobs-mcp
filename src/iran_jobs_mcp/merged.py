@@ -19,9 +19,9 @@ from .registry import tool
 
 SITE = Annotated[
     Literal["all", "irantalent", "jobinja", "jobvision"],
-    Field(description="Which job site to ask: all three side by side (default), or only one."),
+    Field(description="all (three side by side) or one site."),
 ]
-Page = Annotated[int, Field(description="Page number, 1-based, passed to each site.", ge=1, le=500)]
+Page = Annotated[int, Field(description="Page, 1-based, per site.", ge=1, le=500)]
 SHAPE_ERRORS = (ToolError, KeyError, IndexError, TypeError, ValueError)
 
 
@@ -46,18 +46,16 @@ async def _each(site: str, **jobs: Callable[[], Awaitable[Any]]) -> dict[str, An
 async def job_search(
     keyword: Annotated[
         str | None,
-        Field(description="Words from the job title or ad, Persian or English, e.g. python, حسابدار.", max_length=100),
+        Field(description="Title/ad words, e.g. python, حسابدار.", max_length=100),
     ] = None,
-    remote: Annotated[bool, Field(description="Only remote (دورکاری) jobs.")] = False,
+    remote: Annotated[bool, Field(description="Remote only.")] = False,
     site: SITE = "all",
     page: Page = 1,
 ) -> dict[str, Any]:
     """Search job ads on IranTalent, Jobinja and Jobvision at once, one block of results per site.
 
-    Use first for "find X jobs". Ids are per site: pass a job id only to that site's detail tool
-    (job_irantalent_job, job_jobinja_job, job_jobvision_job). For city, category, seniority, salary or benefit
-    filters use the site's own search tool (job_irantalent_search_jobs, job_jobinja_search_jobs,
-    job_jobvision_search). The same ad may appear on more than one site.
+    Ids are per site: use them only with that site's detail tool. For other filters use the site's own search tool.
+    The same ad may appear on several sites.
     """
     kw = (keyword or "").strip() or None
     return await _each(
@@ -70,18 +68,14 @@ async def job_search(
 
 @tool("Find companies on all sites")
 async def job_companies(
-    name: Annotated[
-        str | None, Field(description="Company name, Persian or English, e.g. دیجی\u200cکالا, snapp.", max_length=60)
-    ] = None,
+    name: Annotated[str | None, Field(description="Company name, e.g. snapp.", max_length=60)] = None,
     site: SITE = "all",
     page: Page = 1,
 ) -> dict[str, Any]:
     """Find a company by name on IranTalent, Jobinja and Jobvision at once, one block per site.
 
-    Use to get each site's company id: IranTalent `id` (UUID) for job_irantalent_company and
-    job_irantalent_company_reviews, Jobinja `slug` for job_jobinja_company, Jobvision `id` for job_jobvision_company
-    and job_jobvision_interviews. Without a name each site lists its own default order. To browse by industry or
-    other filters use job_jobinja_search_companies or job_jobvision_companies.
+    Gives each site's id: IranTalent `id` (UUID), Jobinja `slug`, Jobvision `id`. Browse by industry with
+    job_jobinja_search_companies or job_jobvision_companies.
     """
     q = (name or "").strip() or None
     return await _each(
@@ -96,9 +90,7 @@ async def job_companies(
 async def job_top_companies(site: SITE = "all") -> dict[str, Any]:
     """List each site's best-rated employers side by side: IranTalent top 50, Jobinja top 50, Jobvision top ranked.
 
-    Use for "best places to work in Iran". Scores are on different scales: IranTalent employee rating 1-5, Jobinja's
-    yearly top-50 score out of 10 with sub-scores, Jobvision's rating out of 5 and rank. Compare within one site.
-    Next: the site's company tool with the id or slug.
+    Scales differ: IranTalent 1-5, Jobinja yearly score out of 10, Jobvision 1-5 with rank. Compare within one site.
     """
     return await _each(
         site,
@@ -112,9 +104,8 @@ async def job_top_companies(site: SITE = "all") -> dict[str, Any]:
 async def job_market(site: SITE = "all") -> dict[str, Any]:
     """Count open job ads per job category on IranTalent, Jobinja and Jobvision, one block per site.
 
-    Use for "which fields hire most". Each site has its own category list and totals. Jobinja also counts per
-    province, industry and skill. Other splits: job_irantalent_job_market (industry, seniority, city, company),
-    job_jobinja_market(province=...) (cities), job_jobvision_market (province, seniority, pay band, ...).
+    Jobinja also counts per province, industry and skill. Other splits: job_irantalent_job_market,
+    job_jobinja_market(province=...), job_jobvision_market.
     """
     return await _each(
         site,
@@ -126,17 +117,13 @@ async def job_market(site: SITE = "all") -> dict[str, Any]:
 
 @tool("Salary for a role on all sites")
 async def job_salary(
-    role: Annotated[
-        str, Field(description="Job title or skill, e.g. python, java, حسابدار.", min_length=1, max_length=60)
-    ],
+    role: Annotated[str, Field(description="Job title or skill, e.g. python.", min_length=1, max_length=60)],
     site: SITE = "all",
 ) -> dict[str, Any]:
     """Compare monthly pay for a role from three sources: IranTalent's salary survey and the pay in Jobinja and Jobvision ads.
 
-    Use for "how much does a X earn in Iran". IranTalent: survey percentiles (net Toman per month) of the first
-    matching report, plus the other matching report slugs for job_irantalent_salary. Jobinja: stated minimums of
-    a sample of ads (Toman; many say negotiable). Jobvision: median and quartiles of advertised ranges (million
-    Toman). These are different measures; report each with its source. Slow: about 25 requests in all.
+    IranTalent: survey percentiles (net Toman) plus other matching report slugs. Jobinja: stated minimums of ad sample
+    (Toman). Jobvision: median/quartiles of advertised ranges (million Toman). Different measures; cite each. Slow: ~25 requests.
     """
     r = role.strip()
 

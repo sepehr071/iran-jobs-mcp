@@ -73,10 +73,10 @@ BENEFITS = {  # tool name -> filters[has_*]
 EXPERIENCE = {"any": "any", "under_2": "under_two", "3_6": "3_6", "7_plus": "7_plus"}
 SORT = {"relevance": "relevance_desc", "newest": "published_at_desc", "salary": "salary_from_desc"}
 
-Page = Annotated[int, Field(description="Page number, 1-based.", ge=1, le=500)]
+Page = Annotated[int, Field(description="Page, 1-based.", ge=1, le=500)]
 Slug = Annotated[
     str,
-    Field(description="Company slug from a Jobinja company or job URL, e.g. payampardaz.", pattern=SLUG.pattern),
+    Field(description="Company slug, e.g. payampardaz.", pattern=SLUG.pattern),
 ]
 
 
@@ -241,49 +241,43 @@ def _search_params(
 async def job_jobinja_search_jobs(
     keyword: Annotated[
         str | None,
-        Field(description="Words in the title or text, Persian or English (python, حسابدار, react).", max_length=100),
+        Field(description="Title/text words, e.g. python, حسابدار.", max_length=100),
     ] = None,
-    province: Annotated[
-        str | None, Field(description="Province name, e.g. تهران, اصفهان (see job_jobinja_filters).")
-    ] = None,
+    province: Annotated[str | None, Field(description="Province name, e.g. تهران (job_jobinja_filters).")] = None,
     category: Annotated[
         str | None,
-        Field(
-            description="Job category, e.g. 'وب، برنامه\u200cنویسی و نرم\u200cافزار' or just 'برنامه\u200cنویسی' (see job_jobinja_filters)."
-        ),
+        Field(description="Category name or part, e.g. برنامه\u200cنویسی (job_jobinja_filters)."),
     ] = None,
-    remote: Annotated[bool, Field(description="Only remote (دورکاری) jobs.")] = False,
+    remote: Annotated[bool, Field(description="Remote only.")] = False,
     city: Annotated[
-        str | None, Field(description="City name, e.g. مشهد, کرج (job_jobinja_market lists cities with ad counts).")
+        str | None, Field(description="City name, e.g. مشهد (job_jobinja_market(province) lists them).")
     ] = None,
     benefits: Annotated[
         list[Literal[tuple(BENEFITS)]] | None,  # type: ignore[valid-type]
-        Field(description="Only ads offering all of these benefits, e.g. ['loan', 'flexible_hours', 'esop']."),
+        Field(description="Ads offering all of these benefits."),
     ] = None,
     job_type: Annotated[Literal["fulltime", "parttime"] | None, Field(description="Contract type.")] = None,
-    internship: Annotated[bool, Field(description="Only internships (کارآموزی).")] = False,
+    internship: Annotated[bool, Field(description="Internships only.")] = False,
     experience: Annotated[
         Literal["any", "under_2", "3_6", "7_plus"] | None,
-        Field(description="Required work experience in years: any, under 2, 3 to 6, 7 or more."),
+        Field(description="Required experience bracket."),
     ] = None,
     min_salary: Annotated[
         float | None,
         Field(
-            description="Minimum monthly salary in million Toman; rounded down to Jobinja's steps (10.3, 11, 15, 20, 30, 40, 50, 70, 100, 150, 200, 300, 400, 500).",
+            description="Minimum monthly salary, million Toman; rounded down to Jobinja's steps (job_jobinja_filters).",
             gt=0,
         ),
     ] = None,
     sort: Annotated[
         Literal["relevance", "newest", "salary"],
-        Field(description="Order: relevance (default), newest, or highest salary."),
+        Field(description="Result order."),
     ] = "relevance",
     page: Page = 1,
 ) -> dict[str, Any]:
     """Search Jobinja job ads by keyword, province, city, category, remote, contract type, experience, benefits and minimum salary.
 
-    Use for "find python jobs in Isfahan" or "remote jobs paying 50 million". Returns 20 ads per page with an id
-    (company/token), company, city, contract type and age. Jobinja hides salaries in lists; call job_jobinja_job with an id
-    for the salary, skills and full description. Filters combine with AND.
+    20 ads per page, filters AND. Lists hide salaries: call job_jobinja_job with an id for salary, skills and full text.
     """
     params = _search_params(
         keyword,
@@ -380,15 +374,14 @@ async def job_jobinja_job(
     job: Annotated[
         str,
         Field(
-            description="Job id 'company-slug/token' from job_jobinja_search_jobs or job_jobinja_company_jobs, e.g. payampardaz/tuAE, or the job page URL.",
+            description="Job id 'company-slug/token', e.g. payampardaz/tuAE, or the job URL.",
             max_length=400,
         ),
     ],
 ) -> dict[str, Any]:
     """Read one Jobinja job ad: title, company, salary, contract, experience, skills, degree, gender, military status and the full description.
 
-    Use after job_jobinja_search_jobs or job_jobinja_company_jobs. The salary is the monthly figure in Toman shown on the ad page
-    (minimum, or negotiable). Check `expired` before recommending it. Call job_jobinja_company with company_slug for the employer.
+    Salary is monthly Toman (minimum, or negotiable). Check `expired` before recommending it.
     """
     jid = _parse_job_id(job)
     _, html = await fetch(f"/companies/{jid.split('/')[0]}/jobs/{jid.split('/')[1]}")
@@ -402,8 +395,7 @@ async def job_jobinja_job(
 async def job_jobinja_company(slug: Slug) -> dict[str, Any]:
     """Read a company's Jobinja profile: name, founding year, industry, size, website, open job count and its intro, culture and benefits text.
 
-    Use after a job or company search. Jobinja has no employee reviews or ratings (only the top-50 score, see
-    job_top_companies). Call job_jobinja_company_jobs for the open ads.
+    No reviews or ratings on Jobinja. Next: job_jobinja_company_jobs.
     """
     (_, main), (_, about) = await asyncio.gather(fetch(f"/companies/{slug}"), fetch(f"/companies/{slug}/about"))
     head = _soup(main).select_one(".c-companyHeader")
@@ -439,13 +431,13 @@ async def job_jobinja_company_jobs(
     slug: Slug,
     expired_page: Annotated[
         int | None,
-        Field(description="Set to read that page of the company's expired ads instead of the open ones.", ge=1, le=100),
+        Field(description="Page of expired ads instead of open ones.", ge=1, le=100),
     ] = None,
-    limit: Annotated[int, Field(description="Most rows to return (expired pages hold up to 100).", ge=1, le=100)] = 30,
+    limit: Annotated[int, Field(description="Most rows to return.", ge=1, le=100)] = 30,
 ) -> dict[str, Any]:
     """List a company's open job ads on Jobinja (or, with expired_page, its past ads, which show its hiring history).
 
-    Use to see what a company is hiring for. Each row has an id for job_jobinja_job. Expired pages hold 100 ads each.
+    Each row has an id for job_jobinja_job. Expired pages hold 100 ads each.
     """
     url, html = await fetch(
         f"/companies/{slug}/jobs", [("expired_jobs_page", str(expired_page))] if expired_page else None
@@ -463,18 +455,16 @@ async def job_jobinja_company_jobs(
 
 @tool("Search companies")
 async def job_jobinja_search_companies(
-    keyword: Annotated[
-        str | None, Field(description="Company name words, e.g. دیجی\u200cکالا or snapp.", max_length=100)
-    ] = None,
+    keyword: Annotated[str | None, Field(description="Company name, e.g. snapp.", max_length=100)] = None,
     industry: Annotated[
         str | None,
-        Field(description="Industry name instead of a keyword, e.g. 'بیمه' or 'کامپیوتر' (see job_jobinja_filters)."),
+        Field(description="Industry name, e.g. بیمه (job_jobinja_filters)."),
     ] = None,
     page: Page = 1,
 ) -> dict[str, Any]:
     """Find companies on Jobinja by name, or browse one industry (8 per page).
 
-    Use to get the slug for job_jobinja_company / job_jobinja_company_jobs. Give keyword or industry (industry wins).
+    Gives the slug for job_jobinja_company. Give keyword or industry (industry wins).
     """
     if industry:
         name = _pick(industry, list(INDUSTRIES), "industry")
@@ -541,14 +531,11 @@ def _counts(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 @tool("Job market counts")
 async def job_jobinja_market(
-    province: Annotated[
-        str | None, Field(description="Province name to also list its cities with ad counts, e.g. اصفهان.")
-    ] = None,
+    province: Annotated[str | None, Field(description="Province name: also list its cities, e.g. اصفهان.")] = None,
 ) -> dict[str, Any]:
     """Count the open Jobinja ads right now per job category, province, company industry and top skill (live site statistics).
 
-    Use for market-size questions ("how many programming jobs are open", "which province hires most"), or with
-    province to get exact city names and their ad counts for the city filter of job_jobinja_search_jobs.
+    With province, also lists its exact city names and ad counts for job_jobinja_search_jobs.
     """
     d = (await _api("/api/v10/job_search_meta")).get("data", {})
     out: dict[str, Any] = {
@@ -567,12 +554,11 @@ async def job_jobinja_market(
 
 @tool("Skill demand")
 async def job_jobinja_skills(
-    query: Annotated[str, Field(description="Skill words, e.g. react, python, حسابداری.", min_length=1, max_length=60)],
+    query: Annotated[str, Field(description="Skill word, e.g. react.", min_length=1, max_length=60)],
 ) -> dict[str, Any]:
     """Find skills on Jobinja matching a word, with how many ads ever listed each (a demand signal).
 
-    Use to compare skills ("react vs vue") or to pick the exact skill spelling. The counts cover all ads on the
-    site including expired ones, so they rank skills but are not today's openings; use job_jobinja_search_jobs for those.
+    Counts include expired ads: they rank skills, not today's openings.
     """
     rows = await _api("/api/v10/job-skills/search", [("q", query.strip())])
     seen: dict[str, int] = {}
@@ -585,21 +571,17 @@ async def job_jobinja_skills(
 
 @tool("Salary statistics")
 async def job_jobinja_salary_stats(
-    keyword: Annotated[
-        str | None, Field(description="Words in the title or text, e.g. python.", max_length=100)
-    ] = None,
-    province: Annotated[str | None, Field(description="Province name (see job_jobinja_filters).")] = None,
-    category: Annotated[str | None, Field(description="Job category (see job_jobinja_filters).")] = None,
-    remote: Annotated[bool, Field(description="Only remote jobs.")] = False,
+    keyword: Annotated[str | None, Field(description="Title/text words, e.g. python.", max_length=100)] = None,
+    province: Annotated[str | None, Field(description="Province name.")] = None,
+    category: Annotated[str | None, Field(description="Job category name.")] = None,
+    remote: Annotated[bool, Field(description="Remote only.")] = False,
     experience: Annotated[Literal["any", "under_2", "3_6", "7_plus"] | None, Field(description="Experience.")] = None,
-    sample: Annotated[int, Field(description="How many ads to read (each is one request).", ge=3, le=30)] = 12,
+    sample: Annotated[int, Field(description="Ads to read (one request each).", ge=3, le=30)] = 12,
 ) -> dict[str, Any]:
     """Estimate monthly salaries (Toman) for a kind of job by reading the ad pages of the top search results.
 
-    Use for "what does a python developer earn" questions. Lists hide salaries, so this opens `sample` ads from the
-    first page of results and summarises the stated minimums; most ads say negotiable, so check n_with_salary.
-    A sample, not a survey: say so when reporting. The ads are returned so you can cite them with job_jobinja_job.
-    Makes one request per sampled ad, at most 30 (`sample`).
+    Opens `sample` ads (one request each, max 30) and summarises stated minimums; most say negotiable, so check
+    n_with_salary. A sample, not a survey: say so. Ads are returned for citing.
     """
     params = _search_params(keyword, province, category, remote, None, False, experience, None, "relevance", 1)
     _, html = await fetch("/jobs", params)
@@ -628,7 +610,7 @@ _SAL_KEYS = {"id", "title", "company", "salary", "salary_min_toman", "salary_max
 async def job_jobinja_filters() -> dict[str, Any]:
     """List every value the Jobinja search accepts: provinces, job categories, industries, experience levels, salary steps, sort orders.
 
-    Use when a province, category or industry name is rejected or you need the exact spelling.
+    Use when a province, category or industry name is rejected.
     """
     return {
         "provinces": PROVINCES,
